@@ -78,6 +78,8 @@ def merge_chick_step_datasets(
     combined["Point number"] = pd.to_numeric(combined["Point number"], errors="coerce").astype(
         "Int64"
     )
+    lon = pd.to_numeric(combined["longitude"], errors="coerce")
+    combined["calculation_long"] = (lon % 360 + 360) % 360
     return combined
 
 
@@ -94,3 +96,5 @@ if __name__ == "__main__":
     out_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     out_xlsx = os.path.join(out_root, "mergedchickdata(o7&2013-2014).xlsx")
     combined.to_excel(out_xlsx, index=False)
+    out_csv = os.path.join(out_root, "mergedchickdata(o7&2013-2014).csv")
+    combined.to_csv(out_csv, index=False)
