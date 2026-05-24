@@ -1,0 +1,49 @@
+install.packages(c("ncdf4", "dplyr"))
+library(ncdf4)
+library(dplyr)
+
+nc <- nc_open("~/Downloads/sst.day.mean.2018.nc")
+print(nc)  # shows all variables, dimensions, and metadata
+
+
+extract_sst <- function(nc_file, bird_lat, bird_lon, bird_date) {
+  nc <- nc_open(nc_file)
+  
+  lats <- ncvar_get(nc, "lat")
+  lons <- ncvar_get(nc, "lon")
+  time_raw <- ncvar_get(nc, "time")
+  
+  # Origin is 1800-01-01 per your output
+  times <- as.Date(time_raw, origin = "1800-01-01")
+  
+  # Convert negative longitudes to 0-360
+  bird_lon_360 <- bird_lon %% 360
+  
+  lat_idx  <- which.min(abs(lats - bird_lat))
+  lon_idx  <- which.min(abs(lons - bird_lon_360))
+  time_idx <- which.min(abs(times - as.Date(bird_date)))
+  
+  sst_val <- ncvar_get(nc, "sst",
+    start = c(lon_idx, lat_idx, time_idx),
+    count = c(1, 1, 1)
+  )
+  
+  nc_close(nc)
+  return(sst_val)
+}
+
+bird_df <- read.csv("~/Downloads/FINAL Filtered Chick Data.csv")
+
+bird_df <- bird_df %>%
+  rowwise() %>%
+  mutate(
+    nc_file = paste0("~/Downloads/sst.day.mean.", Year, ".nc"),
+    sst = extract_sst(nc_file, compensatedlat, long, date)
+  ) %>%
+  ungroup()
+  
+  
+head(bird_df$sst)
+
+bird_df$nc_file <- NULL
+write.csv(bird_df, "~/Downloads/SST updated chick data.csv", row.names = FALSE)
